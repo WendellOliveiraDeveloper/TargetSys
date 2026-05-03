@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import { Alert, Text, TouchableOpacity, View } from "react-native";
 import ButtonComponent from "@/components/button";
 import InputComponent from "@/components/input";
 import { styles } from "./styles";
@@ -14,6 +14,8 @@ const MetaView = () => {
   const navigation = useNavigation<NavigationProps>();
 
   const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [metaName, setMetaName] = useState<string>("");
+  const [metaValue, setMetaValue] = useState<string>("");
 
   React.useLayoutEffect(() => {
     navigation.setOptions({
@@ -22,7 +24,7 @@ const MetaView = () => {
         <View>
           <TouchableOpacity
             activeOpacity={0.5}
-            onPress={() => navigation.navigate("Home")}
+            onPress={() => navigation.goBack()}
           >
             {isEditing && <Ionicons name={"trash"} size={22} color={"#ffff"} />}
           </TouchableOpacity>
@@ -30,6 +32,22 @@ const MetaView = () => {
       ),
     });
   }, [navigation]);
+
+  const submit = async () => {
+    if (!metaName && !metaValue) {
+      Alert.alert("Preencha o nome da meta e o valor!");
+      return;
+    }
+
+    const payload = {
+      id: Date.now(),
+      nome: metaName,
+      valorTotal: metaValue,
+    };
+
+    navigation.goBack();
+    console.log(payload);
+  };
 
   return (
     <View style={styles.container}>
@@ -41,16 +59,25 @@ const MetaView = () => {
           label="Nome da Meta"
           placeholder="EX: Celular novo"
           required
+          value={metaName}
+          onChangeText={setMetaName}
         />
         <InputComponent
           label="Valor da Meta"
           placeholder="EX: R$1000,00"
           keyboardType="decimal-pad"
           required
+          value={metaValue}
+          onChangeText={setMetaValue}
         />
       </View>
       <View style={styles.button}>
-        <ButtonComponent title={"Salvar"} onPress={() => navigation.goBack()} />
+        <ButtonComponent
+          title={"Salvar"}
+          onPress={() => {
+            submit();
+          }}
+        />
       </View>
     </View>
   );
