@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Transacao } from "@/interface/Transacao";
 
-const STORAGE_KEY = "@adicionar:transacoes";
+const STORAGE_KEY = "@app:transacoes";
 
 async function get(): Promise<Transacao[]> {
   try {

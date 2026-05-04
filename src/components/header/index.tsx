@@ -1,27 +1,57 @@
-import React from "react";
+import React, { useCallback, useState } from "react";
 import { Text, View } from "react-native";
 import { styles } from "./styles";
 import { Ionicons } from "@expo/vector-icons";
 import { FONT_SIZE } from "@/utils/themeColors";
-
-type Props = {
-  total: string;
-  entradas: string;
-  saidas: string;
-};
+import { Target } from "@/interface/Target";
+import { Transacao } from "@/interface/Transacao";
+import { targetStorage } from "@/storage/targetStorage";
+import { TransacaoStorage } from "@/storage/transacaoStorage";
+import { useFocusEffect } from "@react-navigation/native";
 
 const HeaderComponent = () => {
-  const valores = {
-    total: "2.500",
-    entradas: "350",
-    saidas: "500",
+  const [metas, setMetas] = useState<Target[]>([]);
+  const [transacoes, setTransacoes] = useState<Transacao[]>([]);
+
+  const getMetas = async () => {
+    try {
+      const targets = await targetStorage.get();
+      setMetas(targets);
+
+      const todasTransacoes: Transacao[] = [];
+      for (const target of targets) {
+        const logs = await TransacaoStorage.getLogsByTargetId(target.id);
+        todasTransacoes.push(...logs);
+      }
+      setTransacoes(todasTransacoes);
+    } catch (err) {
+      console.log("error: ", err);
+    }
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      getMetas();
+    }, []),
+  );
+
+  const entradas = transacoes
+    .filter((t) => t.tipoTransacao === 0)
+    .reduce((acc, t) => acc + (parseFloat(t.valor) || 0), 0);
+
+  const saidas = transacoes
+    .filter((t) => t.tipoTransacao === 1)
+    .reduce((acc, t) => acc + (parseFloat(t.valor) || 0), 0);
+
+  const total = entradas - saidas;
 
   return (
     <View style={styles.container}>
       <View style={{ marginTop: 20 }}>
         <Text style={[styles.text, styles.title]}>Total que você possui</Text>
-        <Text style={[styles.text, styles.subtitle]}>R$ {valores.total}</Text>
+        <Text style={[styles.text, styles.subtitle]}>
+          R$ {total.toFixed(2)}
+        </Text>
       </View>
       <View style={styles.headerDivisor}></View>
       <View
@@ -42,7 +72,7 @@ const HeaderComponent = () => {
               Entradas
             </Text>
             <Text style={[styles.text, styles.subtitle]}>
-              R$ {valores.entradas}
+              R$ {entradas.toFixed(2)}
             </Text>
           </View>
         </View>
@@ -53,10 +83,10 @@ const HeaderComponent = () => {
               color={"#FC1C1C"}
               size={FONT_SIZE.title}
             />
-            Vendas
+            Saídas
           </Text>
           <Text style={[styles.text, styles.subtitle]}>
-            R$ {valores.saidas}
+            R$ {saidas.toFixed(2)}
           </Text>
         </View>
       </View>

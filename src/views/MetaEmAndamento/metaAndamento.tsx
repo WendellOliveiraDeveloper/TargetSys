@@ -39,7 +39,17 @@ const MetaAndamento = ({ route, navigation }: NavigationProps) => {
   const [transacoes, setTransacoes] = useState<Transacao[]>([]);
   const [meta, setMeta] = useState<Target>();
 
-  // const percentual = (/) * 100;
+  const valorAtual = transacoes.reduce((total, item) => {
+    const valor = parseFloat(item.valor) || 0;
+
+    return item.tipoTransacao === 0
+      ? total + valor
+      : total - valor;
+  }, 0);
+
+  const percentual = target?.valorTotal
+    ? (valorAtual / parseFloat(target.valorTotal)) * 100
+    : 0;
 
   const carregarDadosById = async () => {
     try {
@@ -106,15 +116,15 @@ const MetaAndamento = ({ route, navigation }: NavigationProps) => {
 
         <View style={styles.section}>
           <Text style={styles.label}>Valor Guardado</Text>
-          {/* <Text style={styles.progressText}>{percentual.toFixed(0)}%</Text> */}
+          <Text style={styles.progressText}>{percentual.toFixed(0)}%</Text>
         </View>
         <View style={styles.section}>
           <Text style={styles.label}>
-            R$ {target.atual} de R$ {target.valor}
+            R$ {valorAtual} de R$ {target.valorTotal}
           </Text>
         </View>
         <View style={styles.section}>
-          {/* <BarraDeProgresso progresso={percentual} /> */}
+          <BarraDeProgresso progresso={percentual} />
         </View>
 
         <View style={styles.transacoesContainer}>
@@ -144,7 +154,9 @@ const MetaAndamento = ({ route, navigation }: NavigationProps) => {
                   <View>
                     <Text style={{ fontWeight: "bold" }}>R$ {item.valor}</Text>
                     <View style={{ flexDirection: "row", gap: 10 }}>
-                      <Text style={{ color: "#666" }}>{String(item.Date)}</Text>
+                      <Text style={{ color: "#666" }}>
+                        {new Date(item.Date).toLocaleDateString("pt-BR")}
+                      </Text>
                       <Text>{item.motivo}</Text>
                     </View>
                   </View>
