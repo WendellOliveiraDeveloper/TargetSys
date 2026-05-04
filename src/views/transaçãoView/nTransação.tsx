@@ -8,14 +8,15 @@ import { RootStackParamList } from "@/types/navigationTypes";
 import { styles } from "./styles";
 import CheckboxComponent from "@/components/checkbox";
 import { TipoTransacao } from "@/enums/TipoTransacao";
+import { TransacaoStorage } from "@/storage/transacaoStorage";
 
-type NavigationProps = NativeStackNavigationProp<
-  RootStackParamList,
-  "Transacao"
->;
+type NavigationProps = {
+  navigation: NativeStackNavigationProp<RootStackParamList, "Transacao">;
+  route: any;
+};
 
-const NovaTransacaoView = () => {
-  const navigation = useNavigation<NavigationProps>();
+const NovaTransacaoView = ({ route, navigation }: NavigationProps) => {
+  const { target } = route.params ?? {};
 
   const [isGuardar, setIsGuardar] = useState<boolean>(true);
 
@@ -36,7 +37,7 @@ const NovaTransacaoView = () => {
     return Math.abs(hash);
   };
 
-  const submit = () => {
+  const submit = async () => {
     const timestamp = Date.now().toString();
     const randomPart = Math.random().toString();
     const input = timestamp + randomPart;
@@ -51,11 +52,14 @@ const NovaTransacaoView = () => {
 
     const payload = {
       id,
-      idTarget: 0,
+      idTarget: Number(target?.id),
+      Date: new Date(),
+      valor,
       tipoTransacao,
       motivo,
     };
 
+    await TransacaoStorage.add(payload);
     navigation.goBack();
   };
 

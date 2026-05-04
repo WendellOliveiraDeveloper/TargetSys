@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Transacao } from '@/interface/Transacao';
+import { Transacao } from "@/interface/Transacao";
 
-const STORAGE_KEY = '@adicionar:transacoes';
+const STORAGE_KEY = "@adicionar:transacoes";
 
 async function get(): Promise<Transacao[]> {
   try {
@@ -14,6 +14,16 @@ async function get(): Promise<Transacao[]> {
     throw new Error("TRANSACAO_GET: " + error);
   }
 }
+
+const getLogsByTargetId = async (targetId: number): Promise<Transacao[]> => {
+  try {
+    const items = await get();
+
+    return items.filter((transacao) => transacao.idTarget === targetId);
+  } catch (error) {
+    throw new Error("TRANSACAO_GET_LOGS_BY_TARGET: " + error);
+  }
+};
 
 const save = async (Transacao: Transacao[]): Promise<void> => {
   try {
@@ -32,7 +42,8 @@ const add = async (newTransacao: Transacao): Promise<Transacao[]> => {
 };
 
 const update = async (updateTransacao: Transacao): Promise<Transacao[]> => {
-  if (!updateTransacao.id) throw new Error("Transacao_ERROR: ID não fornecido!");
+  if (!updateTransacao.id)
+    throw new Error("Transacao_ERROR: ID não fornecido!");
 
   const items = await get();
 
@@ -59,8 +70,9 @@ const remove = async (item: Transacao): Promise<Transacao[]> => {
 
 export const TransacaoStorage = {
   get,
+  getLogsByTargetId,
   save,
   add,
   update,
-  remove
+  remove,
 };

@@ -1,72 +1,84 @@
 import ButtonComponent from "@/components/button";
-import InputComponent from "@/components/input";
-import React, { useState } from "react";
-import { FlatList, Text, TouchableOpacity, View } from "react-native";
-// import { styles } from "./styles";
-import { useNavigation } from "@react-navigation/native";
+import React, { useState, useEffect, useCallback } from "react";
+import { Text, TouchableOpacity, View, FlatList, Alert } from "react-native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/types/navigationTypes";
-import HeaderComponent from "@/components/header";
 import { Ionicons } from "@expo/vector-icons";
-import { StyleSheet } from "react-native";
-import { DEFAULT_THEME_COLORS, FONT_SIZE } from "@/utils/themeColors";
+import { styles } from "./styles";
+import { DEFAULT_THEME_COLORS } from "@/utils/themeColors";
+import { TransacaoStorage } from "../../storage/transacaoStorage";
+import { Transacao } from "@/interface/Transacao";
+import { targetStorage } from "@/storage/targetStorage";
+import { Target } from "@/interface/Target";
 
-type NavigationProps = NativeStackNavigationProp<
-  RootStackParamList,
-  "MetaAndamento"
->;
-
-const metaficticia = {
-  id: "1",
-  nome: "Apple Watch",
-  valor: 1000,
-  atual: 250,
+type NavigationProps = {
+  navigation: NativeStackNavigationProp<RootStackParamList, "MetaAndamento">;
+  route: any;
 };
 
-interface barraDeProgressoProps {
+interface BarraDeProgressoProps {
   progresso: number;
 }
 
-const barraDeProgresso = ({ progresso }: barraDeProgressoProps) => {
+const BarraDeProgresso = ({ progresso }: BarraDeProgressoProps) => {
   const porcentagem = Math.min(Math.max(progresso, 0), 100);
 
   return (
-    <View style={styles.container}>
+    <View style={styles.progressContainer}>
       <View style={styles.backgroundBar}>
         <View style={[styles.progressBar, { width: `${porcentagem}%` }]} />
       </View>
-      <Text style={styles.progressText}>{porcentagem}% concluído</Text>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    width: "100%",
-    padding: 10,
-  },
-  backgroundBar: {
-    height: 20,
-    width: "100%",
-    backgroundColor: "#e0e0e0",
-    borderRadius: 10,
-    overflow: "hidden",
-  },
-  progressBar: {
-    height: "100%",
-    backgroundColor: DEFAULT_THEME_COLORS.backgroundColor,
-    borderRadius: 10,
-  },
-  progressText: {
-    marginTop: 5,
-    textAlign: "right",
-    fontSize: 14,
-    color: "#666",
-  },
-});
+const MetaAndamento = ({ route, navigation }: NavigationProps) => {
+  const { target } = route.params ?? {};
 
-const MetaAndamento = () => {
-  const navigation = useNavigation<NavigationProps>();
+  const [transacoes, setTransacoes] = useState<Transacao[]>([]);
+  const [meta, setMeta] = useState<Target>();
+
+  // const percentual = (/) * 100;
+
+  const carregarDadosById = async () => {
+    try {
+      if (!target?.id) return;
+
+      const dados = await TransacaoStorage.getLogsByTargetId(target.id);
+
+      setTransacoes(dados);
+    } catch (error) {
+      console.error("Erro ao carregar:", error);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      carregarDadosById();
+    }, []),
+  );
+
+  const handleRemove = async (item: Transacao) => {
+    Alert.alert(
+      "Remover Transação",
+      `Deseja excluir "${item.motivo} de R$ ${item.valor}"?`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Excluir",
+          style: "destructive",
+          onPress: async () => {
+            const listaCompleta = await TransacaoStorage.remove(item);
+            const listaFiltrada = listaCompleta.filter(
+              (t) => t.idTarget === target.id,
+            );
+            setTransacoes(listaFiltrada);
+          },
+        },
+      ],
+    );
+  };
 
   React.useLayoutEffect(() => {
     navigation.setOptions({
@@ -75,7 +87,10 @@ const MetaAndamento = () => {
         <View>
           <TouchableOpacity
             activeOpacity={0.5}
-            onPress={() => navigation.navigate("Home")}
+            onPress={() =>
+              navigation.navigate("Meta", { target: target, isEditing: true })
+            }
+            style={{}}
           >
             <Ionicons name={"pencil"} size={22} color={"#ffff"} />
           </TouchableOpacity>
@@ -86,15 +101,79 @@ const MetaAndamento = () => {
 
   return (
     <View style={styles.container}>
-      <View style={{ alignItems: "center" }}>
-        <View>
-          <Text>{metaficticia.nome}</Text>
+      <View style={styles.content}>
+        <Text style={styles.title}>{target.nome}</Text>
+
+        <View style={styles.section}>
+          <Text style={styles.label}>Valor Guardado</Text>
+          {/* <Text style={styles.progressText}>{percentual.toFixed(0)}%</Text> */}
+        </View>
+        <View style={styles.section}>
+          <Text style={styles.label}>
+            R$ {target.atual} de R$ {target.valor}
+          </Text>
+        </View>
+        <View style={styles.section}>
+          {/* <BarraDeProgresso progresso={percentual} /> */}
         </View>
 
+        <View style={styles.transacoesContainer}>
+          <Text style={styles.transacoesTitle}>Transações</Text>
+
+          <FlatList
+            data={transacoes}
+            keyExtractor={(item) => String(item.id || Math.random())}
+            renderItem={({ item }) => (
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <View style={{ flexDirection: "row" }}>
+                  <Ionicons
+                    name={item.tipoTransacao === 1 ? "arrow-down" : "arrow-up"}
+                    color={
+                      item.tipoTransacao === 1
+                        ? "red"
+                        : DEFAULT_THEME_COLORS.mainColor
+                    }
+                    size={30}
+                  />
+                  <View>
+                    <Text style={{ fontWeight: "bold" }}>R$ {item.valor}</Text>
+                    <View style={{ flexDirection: "row", gap: 10 }}>
+                      <Text style={{ color: "#666" }}>{String(item.Date)}</Text>
+                      <Text>{item.motivo}</Text>
+                    </View>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={{ padding: 5, marginBottom: 15 }}
+                  onPress={() => handleRemove(item)}
+                >
+                  <Ionicons name="close" size={21} color="#000" />
+                </TouchableOpacity>
+              </View>
+            )}
+            ListEmptyComponent={() => (
+              <Text
+                style={{ textAlign: "center", marginTop: 20, color: "#999" }}
+              >
+                Nenhuma transação encontrada.
+              </Text>
+            )}
+          />
+        </View>
+      </View>
+
+      <View style={styles.footer}>
         <ButtonComponent
           title="Nova Transação"
-          style={{ width: 400 }}
-          onPress={() => navigation.navigate("Transacao")}
+          style={{ width: "100%" }}
+          onPress={() => navigation.navigate("Transacao", { target: target })}
         />
       </View>
     </View>

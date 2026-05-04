@@ -7,13 +7,16 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/types/navigationTypes";
 import { Ionicons } from "@expo/vector-icons";
+import { targetStorage } from "@/storage/targetStorage";
 
-type NavigationProps = NativeStackNavigationProp<RootStackParamList, "Meta">;
+type NavigationProps = {
+  navigation: NativeStackNavigationProp<RootStackParamList, "Meta">;
+  route: any;
+};
 
-const MetaView = () => {
-  const navigation = useNavigation<NavigationProps>();
+const MetaView = ({ navigation, route }: NavigationProps) => {
+  const { target, isEditing } = route.params ?? {};
 
-  const [isEditing, setIsEditing] = useState<boolean>(false);
   const [metaName, setMetaName] = useState<string>("");
   const [metaValue, setMetaValue] = useState<string>("");
 
@@ -22,10 +25,7 @@ const MetaView = () => {
       headerShown: true,
       headerRight: () => (
         <View>
-          <TouchableOpacity
-            activeOpacity={0.5}
-            onPress={() => navigation.goBack()}
-          >
+          <TouchableOpacity activeOpacity={0.5} onPress={() => onExclude()}>
             {isEditing && <Ionicons name={"trash"} size={22} color={"#ffff"} />}
           </TouchableOpacity>
         </View>
@@ -33,9 +33,48 @@ const MetaView = () => {
     });
   }, [navigation]);
 
+  useEffect(() => {
+    if (!target) return;
+
+    setMetaName(target.nome);
+    setMetaValue(target.valorTotal);
+  }, [target]);
+
+  const onExclude = async () => {
+    Alert.alert("Remover Transação", `Deseja excluir "${target.nome}"?`, [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Excluir",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await targetStorage.remove(target);
+            navigation.reset({
+              index: 0,
+              routes: [{ name: "Home" }],
+            });
+          } catch (err) {
+            console.log("Error: ", err);
+          }
+        },
+      },
+    ]);
+  };
+
   const submit = async () => {
     if (!metaName && !metaValue) {
       Alert.alert("Preencha o nome da meta e o valor!");
+      return;
+    }
+
+    if (isEditing) {
+      const updatedPayload = {
+        id: target.id,
+        nome: metaName,
+        valorTotal: metaValue,
+      };
+      await targetStorage.update(updatedPayload);
+      navigation.goBack();
       return;
     }
 
@@ -45,8 +84,8 @@ const MetaView = () => {
       valorTotal: metaValue,
     };
 
+    await targetStorage.add(payload);
     navigation.goBack();
-    console.log(payload);
   };
 
   return (
